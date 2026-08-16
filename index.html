@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Fußballspieler Statistik Report</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+</head>
+<body>
+  <header class="hero">
+    <div>
+      <p class="eyebrow">Öffentlicher Report</p>
+      <h1>Fußballspieler Statistiken</h1>
+      <p class="subtitle">Interaktive Auswertung aus einer CSV-Datei mit Filtern, Diagrammen und Rangliste.</p>
+    </div>
+  </header>
+
+  <main class="container">
+    <section class="filters card">
+      <div class="filter-group">
+        <label for="seasonFilter">Saison</label>
+        <select id="seasonFilter"></select>
+      </div>
+      <div class="filter-group">
+        <label for="clubFilter">Verein</label>
+        <select id="clubFilter"></select>
+      </div>
+      <div class="filter-group">
+        <label for="positionFilter">Position</label>
+        <select id="positionFilter"></select>
+      </div>
+      <div class="filter-group wide">
+        <label for="playerSearch">Spieler suchen</label>
+        <input id="playerSearch" type="search" placeholder="Name eingeben...">
+      </div>
+      <button id="resetFilters">Filter zurücksetzen</button>
+    </section>
+
+    <section class="kpis">
+      <div class="kpi card"><span id="kpiPlayers">0</span><small>Spieler</small></div>
+      <div class="kpi card"><span id="kpiGoals">0</span><small>Tore</small></div>
+      <div class="kpi card"><span id="kpiAssists">0</span><small>Assists</small></div>
+      <div class="kpi card"><span id="kpiGames">0</span><small>Spiele</small></div>
+    </section>
+
+    <section class="grid">
+      <article class="card chart-card">
+        <h2>Tore pro Spieler</h2>
+        <canvas id="goalsChart"></canvas>
+      </article>
+      <article class="card chart-card">
+        <h2>Tore + Assists</h2>
+        <canvas id="contributionChart"></canvas>
+      </article>
+      <article class="card chart-card">
+        <h2>Tore vs. Assists</h2>
+        <canvas id="scatterChart"></canvas>
+      </article>
+      <article class="card chart-card">
+        <h2>Minuten pro Tor</h2>
+        <canvas id="minutesGoalChart"></canvas>
+      </article>
+    </section>
+
+    <section class="card table-card">
+      <div class="table-header">
+        <h2>Spieler Rangliste</h2>
+        <p>Sortiert nach Torbeteiligungen.</p>
+      </div>
+      <div class="table-wrapper">
+        <table>
+          <thead>
+            <tr>
+              <th>Spieler</th>
+              <th>Saison</th>
+              <th>Verein</th>
+              <th>Position</th>
+              <th>Tore</th>
+              <th>Assists</th>
+              <th>Spiele</th>
+              <th>Minuten</th>
+              <th>Torbeteiligungen</th>
+              <th>Min./Tor</th>
+            </tr>
+          </thead>
+          <tbody id="playersTable"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <p>Datenquelle: <code>data.csv</code> · CSV-Datei ersetzen und GitHub Pages aktualisiert die Website automatisch.</p>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>

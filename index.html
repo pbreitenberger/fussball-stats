@@ -3,98 +3,94 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Fußballspieler Statistik Report</title>
+  <title>GPS Training Dashboard</title>
   <link rel="stylesheet" href="style.css">
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
 </head>
 <body>
-  <header class="hero">
-    <div>
-      <p class="eyebrow">Öffentlicher Report</p>
-      <h1>Fußballspieler Statistiken</h1>
-      <p class="subtitle">Interaktive Auswertung aus einer CSV-Datei mit Filtern, Diagrammen und Rangliste.</p>
-    </div>
-  </header>
+  <div class="app-shell">
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">Training Report</p>
+        <h1>GPS Spieler Dashboard</h1>
+        <p id="sessionMeta" class="meta">CSV wird geladen...</p>
+      </div>
+      <div class="actions">
+        <label class="upload-btn" for="csvUpload">CSV lokal laden</label>
+        <input id="csvUpload" type="file" accept=".csv,text/csv">
+      </div>
+    </header>
 
-  <main class="container">
-    <section class="filters card">
-      <div class="filter-group">
-        <label for="seasonFilter">Saison</label>
-        <select id="seasonFilter"></select>
+    <section class="toolbar card">
+      <div class="control">
+        <label for="playerSelect">Spieler</label>
+        <select id="playerSelect"></select>
       </div>
-      <div class="filter-group">
-        <label for="clubFilter">Verein</label>
-        <select id="clubFilter"></select>
+      <div class="control">
+        <label for="metricMode">Tabellenmodus</label>
+        <select id="metricMode">
+          <option value="absolute">Absolut</option>
+          <option value="perMinute">Pro Minute</option>
+        </select>
       </div>
-      <div class="filter-group">
-        <label for="positionFilter">Position</label>
-        <select id="positionFilter"></select>
-      </div>
-      <div class="filter-group wide">
-        <label for="playerSearch">Spieler suchen</label>
-        <input id="playerSearch" type="search" placeholder="Name eingeben...">
-      </div>
-      <button id="resetFilters">Filter zurücksetzen</button>
+      <div class="hint">Datenquelle: <code>data.csv</code>. Für ein neues Training einfach die CSV im Repository ersetzen.</div>
     </section>
 
-    <section class="kpis">
-      <div class="kpi card"><span id="kpiPlayers">0</span><small>Spieler</small></div>
-      <div class="kpi card"><span id="kpiGoals">0</span><small>Tore</small></div>
-      <div class="kpi card"><span id="kpiAssists">0</span><small>Assists</small></div>
-      <div class="kpi card"><span id="kpiGames">0</span><small>Spiele</small></div>
-    </section>
+    <section class="kpi-grid" id="kpiGrid"></section>
 
-    <section class="grid">
-      <article class="card chart-card">
-        <h2>Tore pro Spieler</h2>
-        <canvas id="goalsChart"></canvas>
-      </article>
-      <article class="card chart-card">
-        <h2>Tore + Assists</h2>
-        <canvas id="contributionChart"></canvas>
-      </article>
-      <article class="card chart-card">
-        <h2>Tore vs. Assists</h2>
-        <canvas id="scatterChart"></canvas>
-      </article>
-      <article class="card chart-card">
-        <h2>Minuten pro Tor</h2>
-        <canvas id="minutesGoalChart"></canvas>
-      </article>
-    </section>
+    <main class="dashboard-grid">
+      <section class="card table-card large">
+        <div class="section-title">
+          <div>
+            <h2>Spielerübersicht</h2>
+            <p id="tableSubtitle">Alle Spieler im aktuellen CSV-File</p>
+          </div>
+          <div class="toggle-pill"><span id="modeAbsolute">Absolut</span><span id="modeMinute">Pro Minute</span></div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead id="playersHead"></thead>
+            <tbody id="playersTable"></tbody>
+            <tfoot id="playersFoot"></tfoot>
+          </table>
+        </div>
+      </section>
 
-    <section class="card table-card">
-      <div class="table-header">
-        <h2>Spieler Rangliste</h2>
-        <p>Sortiert nach Torbeteiligungen.</p>
-      </div>
-      <div class="table-wrapper">
-        <table>
-          <thead>
-            <tr>
-              <th>Spieler</th>
-              <th>Saison</th>
-              <th>Verein</th>
-              <th>Position</th>
-              <th>Tore</th>
-              <th>Assists</th>
-              <th>Spiele</th>
-              <th>Minuten</th>
-              <th>Torbeteiligungen</th>
-              <th>Min./Tor</th>
-            </tr>
-          </thead>
-          <tbody id="playersTable"></tbody>
-        </table>
-      </div>
-    </section>
-  </main>
+      <section class="card chart-card">
+        <div class="section-title">
+          <div>
+            <h2>Verteilung - Distanz pro Minute</h2>
+            <p>Dein Wert im Vergleich zum Team</p>
+          </div>
+        </div>
+        <canvas id="distributionChart"></canvas>
+        <div class="rank-grid">
+          <div><span id="rankValue">-</span><small>Rang</small></div>
+          <div><span id="percentileValue">-</span><small>Perzentil</small></div>
+        </div>
+      </section>
 
-  <footer>
-    <p>Datenquelle: <code>data.csv</code> · CSV-Datei ersetzen und GitHub Pages aktualisiert die Website automatisch.</p>
-  </footer>
+      <section class="card chart-card">
+        <div class="section-title">
+          <div>
+            <h2>Geschwindigkeitszonen</h2>
+            <p>Distanz je Zone für den ausgewählten Spieler</p>
+          </div>
+        </div>
+        <canvas id="speedZoneChart"></canvas>
+      </section>
 
+      <section class="card compare-card">
+        <div class="section-title">
+          <div>
+            <h2 id="compareTitle">Vergleich zur Mannschaft</h2>
+            <p>Kennzahlen des ausgewählten Spielers gegen den Teamdurchschnitt</p>
+          </div>
+        </div>
+        <div id="comparisonRows" class="compare-rows"></div>
+      </section>
+    </main>
+  </div>
   <script src="app.js"></script>
 </body>
 </html>

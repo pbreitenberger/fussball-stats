@@ -1,51 +1,56 @@
-# GPS Training Dashboard für GitHub Pages
+# GPS Multi-Training Dashboard für GitHub Pages
 
-Dieses Projekt enthält eine statische GitHub-Pages-Seite für GPS-Tracker-CSV-Dateien aus Fußballtrainings.
+Diese Version lädt mehrere Trainingsdateien und kann wahlweise alle Trainings gesamt oder ein einzelnes Training anzeigen.
 
-## Dateien
+## Struktur
 
-- `index.html` - Dashboard-Seite
-- `style.css` - Dark Dashboard Design
-- `app.js` - CSV-Parser, Kennzahlen, Filter und Charts
-- `data.csv` - aktuelle Trainingsdaten
-
-## Erwartetes CSV-Format
-
-Die Seite ist für das Matrix-Format ausgelegt, das aus der Trainingsdatei exportiert wird:
-
-```csv
-Team:,Tscherms Marling
-Session:,5000m Pyramide, lang
-Date:,2026-08-11
-
-,Session average,Spieler 1,Spieler 2,Spieler 3
-Duration,01:32:35,01:41:58,01:19:07,01:36:40
-Total distance,9052.84,11149.42,6483.75,9525.34
-Max speed,25.36,27.20,23.44,25.44
-...
+```text
+index.html
+style.css
+app.js
+data/
+  index.json
+  2026-08-11_5000m-pyramide-lang.csv
 ```
 
-Die Anzahl der Spieler ist variabel. Die Seite erkennt alle Spieler-Spalten automatisch.
+## Neue Trainings hinzufügen
 
-## Manuelle Aktualisierung
+1. Neue CSV-Datei exportieren.
+2. Datei in den Ordner `data/` hochladen.
+3. `data/index.json` ergänzen.
 
-1. Neue CSV-Datei aus dem Tracker exportieren.
-2. Datei in `data.csv` umbenennen.
-3. `data.csv` im GitHub Repository ersetzen.
-4. GitHub Pages veröffentlicht die aktualisierten Werte automatisch.
+Beispiel:
 
-Alternativ kann ein Besucher über `CSV lokal laden` eine CSV-Datei temporär im Browser öffnen. Diese Änderung wird nicht gespeichert.
+```json
+{
+  "trainings": [
+    {
+      "file": "2026-08-11_5000m-pyramide-lang.csv",
+      "date": "2026-08-11",
+      "title": "5000m Pyramide, lang"
+    },
+    {
+      "file": "2026-08-18_techniktraining.csv",
+      "date": "2026-08-18",
+      "title": "Techniktraining"
+    }
+  ]
+}
+```
 
-## Enthaltene Funktionen
+## Dashboard-Funktionen
 
-- Spieler-Dropdown
-- KPI-Karten für Gesamtdistanz, Distanz pro Minute, HSR-Distanz, Metabolic Power, Max Speed und Beschleunigungen
-- Spielerübersicht als Tabelle
+- Dropdown `Training`: Alle Trainings oder einzelnes Training
+- Dropdown `Spieler`: Alle Spieler oder einzelner Spieler
+- Gesamt-KPIs über den aktuellen Filter
+- Spielerübersicht
 - Umschaltung Absolut / Pro Minute
 - Verteilung Distanz pro Minute
+- Verlauf der Distanz pro Minute über alle Trainings
 - Geschwindigkeitszonen
-- Vergleich Spieler gegen Mannschaftsdurchschnitt
+- Vergleich zur Mannschaft
+- Lokaler Test mit mehreren CSV-Dateien über `CSV-Dateien lokal testen`
 
-## Hinweis
+## Wichtig
 
-Die Website ist öffentlich. Lade keine vertraulichen oder personenbezogenen Daten hoch, die nicht öffentlich sichtbar sein dürfen.
+GitHub Pages kann Dateien in einem Ordner nicht automatisch auflisten. Deshalb ist `data/index.json` notwendig. Wenn eine neue CSV-Datei hochgeladen wird, muss diese Datei dort ergänzt werden.

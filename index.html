@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>GPS Training Dashboard</title>
+  <title>GPS Multi-Training Dashboard</title>
   <link rel="stylesheet" href="style.css">
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
 </head>
@@ -11,17 +11,21 @@
   <div class="app-shell">
     <header class="topbar">
       <div>
-        <p class="eyebrow">Training Report</p>
+        <p class="eyebrow">Training Analytics</p>
         <h1>GPS Spieler Dashboard</h1>
-        <p id="sessionMeta" class="meta">CSV wird geladen...</p>
+        <p id="sessionMeta" class="meta">Trainings werden geladen...</p>
       </div>
       <div class="actions">
-        <label class="upload-btn" for="csvUpload">CSV lokal laden</label>
-        <input id="csvUpload" type="file" accept=".csv,text/csv">
+        <label class="upload-btn" for="csvUpload">CSV-Dateien lokal testen</label>
+        <input id="csvUpload" type="file" accept=".csv,text/csv" multiple>
       </div>
     </header>
 
     <section class="toolbar card">
+      <div class="control">
+        <label for="trainingSelect">Training</label>
+        <select id="trainingSelect"></select>
+      </div>
       <div class="control">
         <label for="playerSelect">Spieler</label>
         <select id="playerSelect"></select>
@@ -33,7 +37,7 @@
           <option value="perMinute">Pro Minute</option>
         </select>
       </div>
-      <div class="hint">Datenquelle: <code>data.csv</code>. Für ein neues Training einfach die CSV im Repository ersetzen.</div>
+      <div class="hint">Alle Trainings werden über <code>data/index.json</code> geladen. Neue Trainingsdateien in den Ordner <code>data/</code> legen und im Manifest ergänzen.</div>
     </section>
 
     <section class="kpi-grid" id="kpiGrid"></section>
@@ -43,7 +47,7 @@
         <div class="section-title">
           <div>
             <h2>Spielerübersicht</h2>
-            <p id="tableSubtitle">Alle Spieler im aktuellen CSV-File</p>
+            <p id="tableSubtitle">Alle Spieler und Trainings</p>
           </div>
           <div class="toggle-pill"><span id="modeAbsolute">Absolut</span><span id="modeMinute">Pro Minute</span></div>
         </div>
@@ -60,7 +64,7 @@
         <div class="section-title">
           <div>
             <h2>Verteilung - Distanz pro Minute</h2>
-            <p>Dein Wert im Vergleich zum Team</p>
+            <p>Ausgewählter Spieler im Vergleich zum Team</p>
           </div>
         </div>
         <canvas id="distributionChart"></canvas>
@@ -70,11 +74,21 @@
         </div>
       </section>
 
+      <section class="card chart-card wide-chart">
+        <div class="section-title">
+          <div>
+            <h2>Verlauf - Distanz pro Minute</h2>
+            <p>Entwicklung über alle Trainings</p>
+          </div>
+        </div>
+        <canvas id="trendChart"></canvas>
+      </section>
+
       <section class="card chart-card">
         <div class="section-title">
           <div>
             <h2>Geschwindigkeitszonen</h2>
-            <p>Distanz je Zone für den ausgewählten Spieler</p>
+            <p>Distanz je Zone für den aktuellen Filter</p>
           </div>
         </div>
         <canvas id="speedZoneChart"></canvas>
@@ -84,7 +98,7 @@
         <div class="section-title">
           <div>
             <h2 id="compareTitle">Vergleich zur Mannschaft</h2>
-            <p>Kennzahlen des ausgewählten Spielers gegen den Teamdurchschnitt</p>
+            <p>Kennzahlen gegen den Teamdurchschnitt</p>
           </div>
         </div>
         <div id="comparisonRows" class="compare-rows"></div>

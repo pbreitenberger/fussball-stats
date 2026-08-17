@@ -1,4 +1,10 @@
-const MANIFEST = 'data/index.json';
+// Repo-Erkennung für die GitHub API. Auf GitHub Pages wird das automatisch aus der URL
+// abgeleitet (owner.github.io/repo/...). Falls das mal nicht zuverlässig klappt (z.B. eigene
+// Domain), hier einfach die Werte fest eintragen, z.B. REPO_OWNER = 'pbreitenberger'.
+const REPO_OWNER = null;
+const REPO_NAME = null;
+const DATA_DIR = 'data';
+const MANIFEST_FALLBACK = 'data/index.json';
 const state = { trainings: [], rows: [], selectedTraining: 'ALL', selectedPlayer: 'ALL', charts: {}, mode: 'absolute' };
 
 const metricAliases = {
@@ -15,8 +21,8 @@ const kpis = [
 
 document.addEventListener('DOMContentLoaded', async () => {
   setupEvents();
-  try { await loadManifest(); render(); }
-  catch (e) { document.getElementById('sessionMeta').textContent = e.message; }
+  try { const info = await loadTrainings(); render(); if (info.usedFallback) console.warn('GitHub API nicht nutzbar - data/index.json als Fallback verwendet.'); }
+  catch (e) { document.getElementById('sessionMeta').textContent = e.message; console.error(e); }
 });
 
 function setupEvents(){
@@ -33,18 +39,61 @@ function setupEvents(){
   });
 }
 
-async function loadManifest(){
-  const manifest = await fetch(MANIFEST,{cache:'no-store'}).then(r => { if(!r.ok) throw new Error('data/index.json konnte nicht geladen werden.'); return r.json(); });
-  const items = manifest.trainings || [];
-  if(!items.length) throw new Error('Keine Trainings in data/index.json gefunden.');
-  const loaded = [];
-  for(const item of items){
-    const text = await fetch('data/' + item.file,{cache:'no-store'}).then(r => { if(!r.ok) throw new Error('CSV konnte nicht geladen werden: ' + item.file); return r.text(); });
-    loaded.push(parseTraining(text, item.file, item));
+// Leitet Owner/Repo aus der aktuellen URL ab, z.B. https://pbreitenberger.github.io/fussball-stats/
+// -> owner: pbreitenberger, repo: fussball-stats. Funktioniert auch für User-Root-Pages
+// (owner.github.io ohne Unterordner) und lässt sich per REPO_OWNER/REPO_NAME übersteuern.
+function detectRepoInfo(){
+  const host = location.hostname;
+  const hostParts = host.split('.');
+  const owner = REPO_OWNER || (hostParts.length >= 3 && hostParts[1] === 'github' ? hostParts[0] : null);
+  if(!owner) return null;
+  const pathSegments = location.pathname.split('/').filter(Boolean);
+  const repo = REPO_NAME || pathSegments[0] || `${owner}.github.io`;
+  return { owner, repo };
+}
+
+// Fragt die GitHub API nach allen Dateien im data/-Ordner. Läuft die Seite nicht auf
+// GitHub Pages (z.B. lokal geöffnet) oder ist die API nicht erreichbar (Rate-Limit,
+// offline), liefert die Funktion null und der Aufrufer greift auf data/index.json zurück.
+async function discoverCsvFiles(){
+  const info = detectRepoInfo();
+  if(!info) return null;
+  const url = `https://api.github.com/repos/${info.owner}/${info.repo}/contents/${DATA_DIR}`;
+  let res;
+  try { res = await fetch(url, { headers: { Accept: 'application/vnd.github+json' } }); }
+  catch(e){ return null; }
+  if(!res.ok) return null;
+  const items = await res.json().catch(() => null);
+  if(!Array.isArray(items)) return null;
+  return items.filter(i => i.type === 'file' && /\.csv$/i.test(i.name)).map(i => i.name);
+}
+
+async function loadTrainings(){
+  let files = await discoverCsvFiles();
+  let usedFallback = false;
+  let overrides = {};
+
+  if(!files || !files.length){
+    usedFallback = true;
+    const manifest = await fetch(MANIFEST_FALLBACK,{cache:'no-store'}).then(r => r.ok ? r.json() : {trainings:[]}).catch(() => ({trainings:[]}));
+    const items = manifest.trainings || [];
+    files = items.map(i => i.file);
+    items.forEach(i => overrides[i.file] = i);
   }
+
+  if(!files.length) throw new Error('Keine Trainings gefunden. CSV-Dateien im Ordner data/ ablegen.');
+
+  const loaded = [];
+  for(const file of files){
+    const text = await fetch(DATA_DIR + '/' + file,{cache:'no-store'}).then(r => { if(!r.ok) throw new Error('CSV konnte nicht geladen werden: ' + file); return r.text(); });
+    loaded.push(parseTraining(text, file, overrides[file] || {}));
+  }
+  loaded.sort((a,b) => (a.date||'').localeCompare(b.date||'') || a.file.localeCompare(b.file));
+
   state.trainings = loaded;
   state.rows = loaded.flatMap(t => t.players.map(p => ({...p, trainingId:t.id, trainingTitle:t.title, trainingDate:t.date, trainingLabel:t.label, team:t.teamEntity})));
   fillTrainingDropdown(); syncPlayers();
+  return { usedFallback, count: loaded.length };
 }
 
 function parseTraining(text, fileName, manifestItem={}){
@@ -104,7 +153,8 @@ function renderTrend(){ const player=state.selectedPlayer; const labels=state.tr
 function renderSpeedZones(scope){ setChart('speedZoneChart','bar',{labels:['<6','6-11','11-16','16-20','20-25','>25 km/h'],datasets:[{label:'Distanz',data:scope.computed.zones,backgroundColor:['#64748b','#7893b8','#5aa7ff','#58c96b','#f8c647','#ef6f6f']} ]},{plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,title:{display:true,text:'Meter'}}}}); }
 function renderComparison(scope, team){ const rows=[['Distanz pro Minute',scope.computed.distancePerMinute,team.computed.distancePerMinute,'m/min',1],['HSR Distanz pro Minute',safeDiv(scope.computed.hsrDistance,scope.computed.durationMinutes),safeDiv(team.computed.hsrDistance,team.computed.durationMinutes),'m/min',1],['Metabolic Power',scope.computed.metabolicPower,team.computed.metabolicPower,'W/kg',2],['Max. Geschwindigkeit',scope.computed.maxSpeed,team.computed.maxSpeed,'km/h',2],['Beschleunigungen pro Minute',safeDiv(scope.computed.accelerations,scope.computed.durationMinutes),safeDiv(team.computed.accelerations,team.computed.durationMinutes),'n/min',2]]; document.getElementById('compareTitle').textContent='Vergleich zur Mannschaft'; document.getElementById('comparisonRows').innerHTML=rows.map(([name,value,t,unit,d])=>{ const max=Math.max(value,t,1); const width=Math.min(100,value/max*100); const marker=Math.min(100,t/max*100); const delta=percentDelta(value,t); return `<div class="compare-row"><div class="compare-name">${name}</div><div class="compare-value">${format(value,d)} ${unit}</div><div class="bar"><div class="bar-fill" style="width:${width}%"></div><div class="team-marker" style="left:${marker}%"></div></div><div class="compare-team">${format(t,d)}</div><div class="delta ${delta>=0?'pos':'neg'}">${delta>=0?'+':''}${format(delta,1)}%</div></div>`; }).join(''); }
 function setChart(id,type,data,options={}){ const base={responsive:true,maintainAspectRatio:false,animation:false,color:'#94a3b8',plugins:{legend:{labels:{color:'#94a3b8'}}},scales:{x:{ticks:{color:'#94a3b8'},grid:{color:'rgba(148,163,184,.12)'}},y:{ticks:{color:'#94a3b8'},grid:{color:'rgba(148,163,184,.12)'}}}}; const merged=deepMerge(base,options); if(state.charts[id]){state.charts[id].data=data;state.charts[id].options=merged;state.charts[id].update('none');return;} state.charts[id]=new Chart(document.getElementById(id),{type,data,options:merged}); }
-function deepMerge(t,s){ const out=structuredClone(t); for(const[k,v]of Object.entries(s||{})){ if(v&&typeof v==='object'&&!Array.isArray(v)) out[k]=deepMerge(out[k]||{},v); else out[k]=v; } return out; }
+function deepClone(v){ if(Array.isArray(v)) return v.map(deepClone); if(v&&typeof v==='object') { const out={}; for(const k in v) out[k]=deepClone(v[k]); return out; } return v; }
+function deepMerge(t,s){ const out=deepClone(t); for(const[k,v]of Object.entries(s||{})){ if(v&&typeof v==='object'&&!Array.isArray(v)) out[k]=deepMerge(out[k]||{},v); else out[k]=v; } return out; }
 function parseNumber(value){ if(typeof value==='number') return value; const s=String(value||'').replace(/\s/g,'').replace('%',''); if(!s)return 0; const normalized=s.includes(',')&&!s.includes('.')?s.replace(',','.'):s.replace(/,/g,''); const n=Number(normalized); return Number.isFinite(n)?n:0; }
 function parseDuration(value){ const s=String(value||'').trim(); if(!s)return 0; if(s.includes(':')){ const p=s.split(':').map(Number); if(p.length===3)return p[0]*60+p[1]+p[2]/60; if(p.length===2)return p[0]+p[1]/60; } const n=parseNumber(s); return n>300?n/60:n; }
 function normalizeLabel(s){return clean(s).toLowerCase().replace(/\s+/g,' ').replace(/²/g,'^2')} function clean(v){return String(v??'').trim()} function safeDiv(a,b){return b?a/b:0} function average(vals){const n=vals.filter(Number.isFinite);return n.length?n.reduce((a,b)=>a+b,0)/n.length:0} function std(vals){const n=vals.filter(Number.isFinite);const a=average(n);return n.length?Math.sqrt(average(n.map(v=>(v-a)**2))):0} function percentDelta(v,b){return b?((v-b)/b)*100:0} function format(v,d=1){return Number(v||0).toLocaleString('de-DE',{minimumFractionDigits:d,maximumFractionDigits:d})} function formatDuration(m){const h=Math.floor(m/60),mi=Math.floor(m%60),s=Math.round((m-Math.floor(m))*60);return `${String(h).padStart(2,'0')}:${String(mi).padStart(2,'0')}:${String(s).padStart(2,'0')}`} function escapeHtml(v){return String(v??'').replace(/[&<>'"]/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[ch]))} function guessDate(name){const m=String(name).match(/\d{4}-\d{2}-\d{2}/);return m?m[0]:''}
